@@ -1,5 +1,5 @@
 /* 
-WiFi Weather Station
+WiFi Weather Station!
 
 Adapted from https://learn.adafruit.com/wifi-weather-station-arduino-cc3000
 Modified to post to https://data.sparkfun.com
