@@ -13,6 +13,8 @@ The code should work using the provided wiring diagrams. Beyond that, follow the
 - [Adafruit Sensor Library](https://github.com/adafruit/Adafruit_Sensor)
 - [Adafruit DHT Unified Library](https://github.com/adafruit/Adafruit_DHT_Unified)
 - [Adafruit DHT Sensor Library](https://github.com/adafruit/DHT-sensor-library)
+- [Adafruit BMP Unified Library](https://github.com/adafruit/Adafruit_BMP085_Unified)
+
 
 ## Code Modifications
 - Replace the `YOUR_NETWORK_ID` and `YOUR_NETWORK_PASSWORD` in the `WiFi Constants` section to be the actual network SSID and password for your local WiFi.
