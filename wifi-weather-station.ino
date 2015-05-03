@@ -1,3 +1,4 @@
+
 /*
 WiFi Weather Station!
 
@@ -12,6 +13,7 @@ Requires some Arduino libraries.
 - Adafruit Sensor Library: https://github.com/adafruit/Adafruit_Sensor
 - Adafruit DHT Unified Library: https://github.com/adafruit/Adafruit_DHT_Unified
 - Adafruit DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
+- Adafruit BMP Unified Library: https://github.com/adafruit/Adafruit_BMP085_Unified
 
 See this guide on installing libraries: http://www.arduino.cc/en/Guide/Libraries
 */
@@ -26,6 +28,10 @@ See this guide on installing libraries: http://www.arduino.cc/en/Guide/Libraries
 #include <Adafruit_Sensor.h>
 #include <DHT.h>
 #include <DHT_U.h>
+// This the BMP085 sensor
+#include <Adafruit_BMP085_U.h>
+#include <Wire.h>
+
 
 ////////////////////////////////////
 // CC3000 Shield Pins & Variables //
@@ -33,19 +39,19 @@ See this guide on installing libraries: http://www.arduino.cc/en/Guide/Libraries
 // These are the interrupt and control pins
 #define ADAFRUIT_CC3000_IRQ   3  // MUST be an interrupt pin!
 // These can be any two pins
-#define ADAFRUIT_CC3000_VBAT  5
+#define ADAFRUIT_CC3000_VBAT  6
 #define ADAFRUIT_CC3000_CS    10
 // Use hardware SPI for the remaining pins
 // On an UNO, SCK = 13, MISO = 12, and MOSI = 11
 Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ, ADAFRUIT_CC3000_VBAT,
                                          SPI_CLOCK_DIVIDER); // you can change this clock speed
-Adafruit_CC3000_Client www;
+
 
 ////////////////////
 // WiFi Constants //
 ////////////////////
-#define STATION_NAME    "YOUR_STATION_NAME"    // ID of device when posting data
-#define WLAN_SSID       "YOUR_WIFI_NETWORK"    // cannot be longer than 32 characters!
+#define STATION_NAME    "YOUR_STATION_NAME"   // ID of device when posting data
+#define WLAN_SSID       "YOUR_WIFI_NETWORK" // cannot be longer than 32 characters!
 #define WLAN_PASS       "YOUR_WIFI_PASSWORD"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
 #define WLAN_SECURITY   WLAN_SEC_WPA2
@@ -58,16 +64,32 @@ uint32_t ip;                      // IP address of the site to which we will be 
 // What page to grab!
 #define SERVER          "data.sparkfun.com"
 
+
+// Generic sensor definitions
+sensor_t sensor;
+sensors_event_t event;
+
 ////////////////////////////
 // DHT11 sensor           //
 ////////////////////////////
 #define DHTPIN 7 
 #define DHTTYPE DHT11
 DHT_Unified dht(DHTPIN, DHTTYPE);
-float temperature;
-float humidity;
-sensor_t sensor;
-sensors_event_t event;
+
+////////////////////////////
+// BMP180 Sensor          //
+////////////////////////////
+/*
+ Connections
+   ===========
+   Connect SCL to analog 5
+   Connect SDA to analog 4
+   Connect VDD to 3.3V DC
+   Connect GROUND to common ground
+*/
+Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10042);
+
+
 
 ////////////////
 // Input Pins //
@@ -80,17 +102,21 @@ sensors_event_t event;
 // Phant (Sparkfun Data) Stuff //
 // http://data.sparkfun.com    //
 /////////////////////////////////
-#define PUBLIC_KEY   "YOUR_PUBLIC_KEY"
-#define PRIVATE_KEY  "YOUR_PRIVATE_KEY"
+#define PUBLIC_KEY   "PUBLIC_KEY"
+#define PRIVATE_KEY  "PRIVATE_KEY"
 
 // these are your "fields" of data that you will be sending to SparkFun.
-const byte NUM_FIELDS = 3;
+const byte NUM_FIELDS = 5;
 // make sure these are spelled *exactly* as they are in your stream definition
 // there should only be as many array entries here as there are "NUM_FIELDS" above
-const String fieldNames[NUM_FIELDS] = {"humidity", "temp", "station"};
+const String fieldNames[NUM_FIELDS] = {"humidity", "temp", "altitude", "pressure", "station"};
 String fieldData[NUM_FIELDS];
 
-
+float temperature;
+float humidity;
+float pressure;
+float altitude;
+float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 
 
@@ -101,30 +127,33 @@ String fieldData[NUM_FIELDS];
 void setup() {
   Serial.begin(115200);
   Serial.println("Hello, Explo Coders!");
-  Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
 
   // Setup Input Pins:
   digitalWrite(TRIGGERPIN, HIGH); //pullup pin powers posting
   
+  // Initialize DHT11 temp/humidity sensor. The function for this is defined below.
+  setupDHT11();
+  
+  // Initialize BMP085 barometric pressure sensor
+  setupBMP085();
+  
   // Since the Wifi setup is extensive, it is moved into its own function at the bottom.
   setupWiFi();
-
-  // Initialize DHT11 temp/humidity sensor. The function for this is defined below as well.
-  setupDHT11();
+  
+  Serial.println(F("\n=========== Ready to Stream ==========="));
+  Serial.println(F("Press the button (D2) to send an update"));
 }
 
 void loop() {
   // If the trigger pin (2) goes low (button press), send the data.
   if (digitalRead(TRIGGERPIN) == LOW) {
     Serial.println("Posting Data!");
-    Serial.print("Free RAM: "); Serial.println(getFreeRam(), DEC);
   
     // attempt to store temperature into a variable
     dht.temperature().getEvent(&event);
     if (isnan(event.temperature)) {
       Serial.println("Error reading temperature!");
-    }
-    else {
+    } else {
       Serial.print("Temperature:");
       Serial.println(event.temperature);
       temperature = event.temperature;
@@ -133,17 +162,48 @@ void loop() {
     dht.humidity().getEvent(&event);
     if (isnan(event.relative_humidity)) {
       Serial.println("Error reading humidity!");
-    }
-    else {
+    } else {
       Serial.print("Humidity:");
       Serial.println(event.relative_humidity);
       humidity = event.relative_humidity;
     }
     
+    /// now for barometric pressure + altitude
+    bmp.getEvent(&event);
+    /* Display the results (barometric pressure is measure in hPa) */
+    if (event.pressure) {
+      /* Display atmospheric pressue in hPa */
+      pressure = event.pressure;
+      
+      /* Calculating altitude with reasonable accuracy requires pressure    *
+       * sea level pressure for your position at the moment the data is     *
+       * converted, as well as the ambient temperature in degress           *
+       * celcius.  If you don't have these values, a 'generic' value of     *
+       * 1013.25 hPa can be used (defined as SENSORS_PRESSURE_SEALEVELHPA   *
+       * in sensors.h), but this isn't ideal and will give variable         *
+       * results from one day to the next.                                  *
+       *                                                                    *
+       * You can usually find the current SLP value by looking at weather   *
+       * websites or from environmental information centers near any major  *
+       * airport.                                                           *
+       *                                                                    *
+       * For example, for Paris, France you can check the current mean      *
+       * pressure and sea level at: http://bit.ly/16Au8ol                   */
+  
+      /* Convert the atmospheric pressure, and SLP to altitude              */
+      /* Update this next line with the current SLP for better results      */
+      altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure); 
+    }
+    else {
+      Serial.println("BMP085 Sensor error");
+    }
+    
     // Gather variables for posting to the web:
-    fieldData[0] = (String)humidity; // humidity
-    fieldData[1] = (String)temperature; // temperature
-    fieldData[2] = STATION_NAME; // station name
+    fieldData[0] = (String)humidity;
+    fieldData[1] = (String)temperature;
+    fieldData[2] = (String)altitude;
+    fieldData[3] = (String)pressure;
+    fieldData[4] = STATION_NAME;
 
     postData();  // the postData() function does all the work, 
                  // check it out below.
@@ -163,7 +223,7 @@ void postData() {
      Note: HTTP/1.1 protocol is used to keep the server from closing the connection before all data is read.
   */
   // instantiate the web client
-  www = cc3000.connectTCP(ip, 80);
+  Adafruit_CC3000_Client www = cc3000.connectTCP(ip, 80);
 
   // request the site, passing along variables in the GET request
   if (www.connected()) {
@@ -196,7 +256,7 @@ void postData() {
       lastRead = millis();
     }
   }
-  //www.close();
+  www.close();
   Serial.println(F("-------------------------------------"));
 
 }
@@ -209,31 +269,27 @@ void postData() {
 /**************************************************************************/
 void setupDHT11() {
   dht.begin();
-  dht.temperature().getSensor(&sensor);
-  Serial.println("------------------------------------");
-  Serial.println("Temperature");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println(" *C");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println(" *C");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println(" *C");  
+  dht.temperature().getSensor(&sensor);  
   dht.humidity().getSensor(&sensor);
-  Serial.println("------------------------------------");
-  Serial.println("Humidity");
-  Serial.print  ("Sensor:       "); Serial.println(sensor.name);
-  Serial.print  ("Driver Ver:   "); Serial.println(sensor.version);
-  Serial.print  ("Unique ID:    "); Serial.println(sensor.sensor_id);
-  Serial.print  ("Max Value:    "); Serial.print(sensor.max_value); Serial.println("%");
-  Serial.print  ("Min Value:    "); Serial.print(sensor.min_value); Serial.println("%");
-  Serial.print  ("Resolution:   "); Serial.print(sensor.resolution); Serial.println("%");  
-  Serial.println("------------------------------------");
   // Set delay between sensor readings based on sensor details.
-  
-  Serial.println(F("\n=========== Ready to Stream ==========="));
-  Serial.println(F("Press the button (D2) to send an update"));
+  delay(500);
 }
 
+/**************************************************************************/
+/*!
+    @brief  Configure the BMP085 + print the results to serial output
+*/
+/**************************************************************************/
+void setupBMP085() {
+  /* Initialise the sensor */
+  if(!bmp.begin()) {
+    /* There was a problem detecting the BMP085 ... check your connections */
+    Serial.print("Ooops, no BMP085 detected ... Check your wiring or I2C ADDR!");
+    while(1);
+  }
+  bmp.getSensor(&sensor);
+  delay(500);
+}
 
 /**************************************************************************/
 /*!
