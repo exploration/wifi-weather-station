@@ -21,4 +21,5 @@ The code should work using the provided wiring diagrams. Beyond that, follow the
 
 
 # TO DO
-- We still need to add the code for the barometric pressure sensor, and add that information to the Sparkfun data stream export.
+- Our test barometric pressure sensor is broken, so we still haven't thoroughly tested the BMP code yet.
+- Fix the problem where multiple button presses eventually stop connecting to `data.sparkfun.com`.
