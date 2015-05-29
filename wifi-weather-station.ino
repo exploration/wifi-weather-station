@@ -50,9 +50,9 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 ////////////////////
 // WiFi Constants //
 ////////////////////
-#define STATION_NAME    "YOUR_STATION_NAME"   // ID of device when posting data
-#define WLAN_SSID       "YOUR_WIFI_NETWORK" // cannot be longer than 32 characters!
-#define WLAN_PASS       "YOUR_WIFI_PASSWORD"
+#define STATION_NAME    "YOUR_STATION"    // ID of device when posting data
+#define WLAN_SSID       "YOUR_NETWORK_SSID" // cannot be longer than 32 characters!
+#define WLAN_PASS       "YOUR_PASSWORD"
 // Security can be WLAN_SEC_UNSEC, WLAN_SEC_WEP, WLAN_SEC_WPA or WLAN_SEC_WPA2
 #define WLAN_SECURITY   WLAN_SEC_WPA2
 
@@ -82,8 +82,8 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 /*
  Connections
    ===========
-   Connect SCL to analog 5
-   Connect SDA to analog 4
+   Connect SCL to ANALOG 5 (not digital pin 5)
+   Connect SDA to ANALOG 4
    Connect VDD to 3.3V DC
    Connect GROUND to common ground
 */
@@ -193,6 +193,11 @@ void loop() {
       /* Convert the atmospheric pressure, and SLP to altitude              */
       /* Update this next line with the current SLP for better results      */
       altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure); 
+      Serial.print("Altitude: ");
+      Serial.println(altitude);
+      Serial.print("Pressure: ");
+      Serial.println(pressure);
+
     }
     else {
       Serial.println("BMP085 Sensor error");
@@ -364,3 +369,4 @@ bool displayConnectionDetails(void)
     return true;
   }
 }
+
