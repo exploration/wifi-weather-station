@@ -19,6 +19,7 @@ Adafruit_CC3000 cc3000 = Adafruit_CC3000(ADAFRUIT_CC3000_CS, ADAFRUIT_CC3000_IRQ
 
 
 void setup() {
+  Serial.begin(115200);
   // put your setup code here, to run once:
     displayMACAddress();
 }
