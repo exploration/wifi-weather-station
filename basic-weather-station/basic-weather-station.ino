@@ -54,6 +54,14 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10042);
 // press the button at this pin to send data
 #define TRIGGERPIN   2        
 
+//////////////////////
+// Sensor Variables //
+//////////////////////
+float temperature;
+float humidity;
+float pressure;
+float altitude;
+float seaLevelPressure = SENSORS_PRESSURE_SEALEVELHPA;
 
 
 
