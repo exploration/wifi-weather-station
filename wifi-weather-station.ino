@@ -109,7 +109,7 @@ Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10042);
 const byte NUM_FIELDS = 5;
 // make sure these are spelled *exactly* as they are in your stream definition
 // there should only be as many array entries here as there are "NUM_FIELDS" above
-const String fieldNames[NUM_FIELDS] = {"humidity", "temp", "altitude", "pressure", "station"};
+const String fieldNames[NUM_FIELDS] = {"humidity", "temperature", "altitude", "pressure", "station"};
 String fieldData[NUM_FIELDS];
 
 float temperature;
@@ -129,6 +129,7 @@ void setup() {
   Serial.println("Hello, Explo Coders!");
 
   // Setup Input Pins:
+  pinMode(TRIGGERPIN, INPUT);
   digitalWrite(TRIGGERPIN, HIGH); //pullup pin powers posting
   
   // Initialize DHT11 temp/humidity sensor. The function for this is defined below.

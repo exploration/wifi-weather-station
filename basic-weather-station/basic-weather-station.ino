@@ -45,7 +45,7 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
    ===========
    Connect SCL to ANALOG 5 (not digital pin 5)
    Connect SDA to ANALOG 4
-   Connect VDD to 3.3V DC
+   Connect VDD/VCC/VIN to 3.3V DC
    Connect GROUND to common ground
 */
 Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10042);
@@ -78,6 +78,7 @@ void setup() {
   Serial.println("Hello, Explo Coders!");
 
   // Setup Input Pins:
+  pinMode(TRIGGERPIN, INPUT);
   digitalWrite(TRIGGERPIN, HIGH); //pullup pin powers posting
   
   // Initialize DHT11 temp/humidity sensor. The function for this is defined below.
@@ -94,7 +95,7 @@ void setup() {
 void loop() {
   // If the trigger pin (2) goes low (button press), send the data.
   if (digitalRead(TRIGGERPIN) == LOW) {
-    Serial.println("Let's Read Some Data!");
+    Serial.println("\nLet's Read Some Data!");
   
     // attempt to store temperature into a variable
     dht.temperature().getEvent(&event);
@@ -122,7 +123,7 @@ void loop() {
       /* Display atmospheric pressue in hPa */
       pressure = event.pressure;
       
-      /* Calculating altitude with reasonable accuracy requires pressure    *
+      /* Calculating altitude with reasonable accuracy requires             *
        * sea level pressure for your position at the moment the data is     *
        * converted, as well as the ambient temperature in degress           *
        * celcius.  If you don't have these values, a 'generic' value of     *
@@ -139,7 +140,9 @@ void loop() {
   
       /* Convert the atmospheric pressure, and SLP to altitude              */
       /* Update this next line with the current SLP for better results      */
-      altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure); 
+      float NORTON_SLP = 1020;
+      //altitude = bmp.pressureToAltitude(seaLevelPressure, event.pressure); 
+      altitude = bmp.pressureToAltitude(NORTON_SLP, event.pressure); 
       Serial.print("Altitude: ");
       Serial.println(altitude);
       Serial.print("Pressure: ");
