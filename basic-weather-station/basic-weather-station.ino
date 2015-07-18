@@ -29,6 +29,10 @@ sensors_event_t event;
 ////////////////////////////
 // DHT11 sensor           //
 ////////////////////////////
+// DHT11 Pinouts:
+// pin 1: 5V line
+// pin 2: signal line
+// pin 4: ground line
 #define DHTPIN 7 
 #define DHTTYPE DHT11
 DHT_Unified dht(DHTPIN, DHTTYPE);
