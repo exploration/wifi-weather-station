@@ -3,7 +3,8 @@
 Weather Station!
 Author: Donald Merand for Explo ( https://github.com/dmerand )
 
-Requires some Arduino libraries. 
+Requires some Arduino libraries.
+- Adafruit CC3000 Library: https://github.com/adafruit/Adafruit_CC3000_Library
 - Adafruit Sensor Library: https://github.com/adafruit/Adafruit_Sensor
 - Adafruit DHT Unified Library: https://github.com/adafruit/Adafruit_DHT_Unified
 - Adafruit DHT Sensor Library: https://github.com/adafruit/DHT-sensor-library
